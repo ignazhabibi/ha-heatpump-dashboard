@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": "Ignaz Habibi",
-  "license": "ISC",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ignazhabibi/ha-heatpump-dashboard.git"

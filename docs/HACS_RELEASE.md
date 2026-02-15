@@ -1,47 +1,44 @@
-# HACS Release Checklist
+# HACS Release Checklist (Maintainers)
 
-Diese Checkliste stellt sicher, dass ein Release sauber von HACS erkannt wird.
+This checklist is optional but helps keep releases consistent and easy to verify.
 
-## 1. Vor dem Release
+## 1. Before Tagging
 
-1. Arbeitsbaum muss sauber sein (`git status`).
-2. Version in `package.json` anpassen (SemVer).
-3. Validieren:
+1. Ensure the working tree is clean: `git status`
+2. Update version in `package.json` (SemVer)
+3. Validate locally:
    - `npm ci`
    - `npm run typecheck`
    - `npm test -- --run`
    - `npm run build`
-4. Prüfen, dass `dist/heatpump-dashboard.js` aktualisiert ist.
-5. Änderungen committen.
+4. Confirm `dist/heatpump-dashboard.js` is up to date
+5. Commit all release-related changes
 
-## 2. Release erzeugen
+## 2. Create the Release
 
-1. Tag im Format `vX.Y.Z` erstellen (Beispiel `v1.0.1`):
-   - `git tag v1.0.1`
-2. Branch + Tag pushen:
+1. Create a tag in format `vX.Y.Z` (example: `v1.0.1`)
+2. Push branch and tags:
    - `git push origin main --tags`
 
-## 3. Automatisierung
+## 3. Automation
 
-- Workflow: `.github/workflows/release.yml`
-- Trigger: Push eines Tags `v*.*.*`
-- Schritte:
-  - Typecheck
-  - Tests
-  - Build
-  - Dist-Drift-Check (`git diff --exit-code dist/heatpump-dashboard.js`)
-  - GitHub Release mit generierten Release Notes
+The workflow in `.github/workflows/release.yml` runs on tag push and performs:
 
-## 4. HACS Verfügbarkeit
+- typecheck
+- tests
+- build
+- dist consistency check
+- GitHub Release creation with generated release notes
 
-Voraussetzungen im Repo:
+## 4. HACS Requirements
 
-- `hacs.json` vorhanden
-- `hacs.json.filename` zeigt auf `dist/heatpump-dashboard.js`
-- Build-Datei ist im getaggten Commit enthalten
+Required in the repository:
 
-Nach dem Release in Home Assistant:
+- `hacs.json` exists
+- `hacs.json.filename` points to `dist/heatpump-dashboard.js`
+- built file is included in the tagged commit
 
-1. HACS öffnen
-2. Repository aktualisieren (neu laden)
-3. Neue Version installieren
+After release in Home Assistant:
+
+1. Refresh HACS repository cache
+2. Update to the new version
