@@ -1,6 +1,6 @@
 {
   "name": "heatpump-dashboard-cards",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Professional Heatpump Dashboard Cards for Home Assistant",
   "main": "src/main.ts",
   "type": "module",
