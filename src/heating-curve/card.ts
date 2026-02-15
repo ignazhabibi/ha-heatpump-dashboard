@@ -508,21 +508,6 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
         return temp;
     }
 
-    private _getCurveFlowForOutdoor(outdoor: number): number | null {
-        if (!this._data) return null;
-        const calculated = this._calculateTemp(
-            outdoor,
-            this._data.slope,
-            this._data.shift,
-            this._data.room_setpoint
-        );
-        return this._clampToLimits(
-            calculated,
-            this._data.min_limit ?? null,
-            this._data.max_limit ?? null
-        );
-    }
-
     private _resolveHistoryDisplayFlow(pt: HeatingCurveHistoryPoint | undefined): number | null {
         if (!pt) return null;
         // In history mode we only show measured values; no synthetic fallback.
@@ -603,64 +588,30 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
         this._chart.update();
     }
 
+    private _getDefaultYBounds(): { minY: number; maxY: number } {
+        const minY = this._data?.min_limit !== undefined ? Math.max(0, this._data.min_limit - 5) : 15;
+        const maxY = this._data?.max_limit !== undefined ? this._data.max_limit + 5 : 70;
+        return { minY, maxY };
+    }
+
     private _computeHistoryZoomBounds(): { minX: number; maxX: number; minY: number; maxY: number } | null {
         if (!this._historyData || this._historyData.length === 0 || !this._data) return null;
 
         let minX = Infinity;
         let maxX = -Infinity;
-        let minMeasuredY = Infinity;
-        let maxMeasuredY = -Infinity;
-        let minCurveY = Infinity;
-        let maxCurveY = -Infinity;
-
-        const includeMeasuredY = (value: number | null) => {
-            if (value === null || !Number.isFinite(value)) return;
-            if (value < minMeasuredY) minMeasuredY = value;
-            if (value > maxMeasuredY) maxMeasuredY = value;
-        };
-
-        const includeCurveY = (value: number | null) => {
-            if (value === null || !Number.isFinite(value)) return;
-            if (value < minCurveY) minCurveY = value;
-            if (value > maxCurveY) maxCurveY = value;
-        };
 
         for (const pt of this._historyData) {
             if (pt.outdoor === null || pt.outdoor === undefined || !Number.isFinite(pt.outdoor)) continue;
 
             if (pt.outdoor < minX) minX = pt.outdoor;
             if (pt.outdoor > maxX) maxX = pt.outdoor;
-
-            // Measured point
-            includeMeasuredY(this._resolveHistoryDisplayFlow(pt));
-            // Static curve at this outdoor temperature
-            includeCurveY(this._getCurveFlowForOutdoor(pt.outdoor));
         }
 
         if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return null;
-        if (!Number.isFinite(minCurveY) || !Number.isFinite(maxCurveY)) return null;
-
-        // If measured values are temporarily missing, use curve values only.
-        if (!Number.isFinite(minMeasuredY) || !Number.isFinite(maxMeasuredY)) {
-            minMeasuredY = minCurveY;
-            maxMeasuredY = maxCurveY;
-        }
 
         const spanX = Math.max(0.2, maxX - minX);
         const padX = Math.max(0.6, spanX * 0.15);
-
-        // Keep the static curve visually centered while still containing all measured extremes.
-        const curveCenterY = (minCurveY + maxCurveY) / 2;
-        const requiredMinY = Math.min(minCurveY, minMeasuredY);
-        const requiredMaxY = Math.max(maxCurveY, maxMeasuredY);
-        const halfSpan = Math.max(
-            curveCenterY - requiredMinY,
-            requiredMaxY - curveCenterY,
-            0.2
-        );
-        const padY = Math.max(1.5, halfSpan * 0.12);
-        const minY = curveCenterY - (halfSpan + padY);
-        const maxY = curveCenterY + (halfSpan + padY);
+        const { minY, maxY } = this._getDefaultYBounds();
 
         return {
             minX: minX - padX,
@@ -680,9 +631,7 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
             options.x.max = 20;
         }
 
-        // Default Y range (re-calculate logic from _drawChart)
-        const yMin = this._data.min_limit !== undefined ? Math.max(0, this._data.min_limit - 5) : 15;
-        const yMax = this._data.max_limit !== undefined ? this._data.max_limit + 5 : 70;
+        const { minY: yMin, maxY: yMax } = this._getDefaultYBounds();
 
         if (options.y) {
             options.y.min = yMin;
