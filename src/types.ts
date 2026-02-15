@@ -149,9 +149,11 @@ export interface DimensioningData {
 
 export interface InsightChartData {
     datasets: ChartDataset<'scatter' | 'line', { x: number; y: number }[]>[];
+    linePoints?: { x: number; y: number }[];
     metrics: {
         baseLoad: number;
         baseLoadSource?: 'ww' | 'regression';
+        modelIntercept: number;
         wwBaseLoad: number;
         slope: number;
         r2?: number;
@@ -165,6 +167,18 @@ export interface InsightChartData {
     compStartDate?: string;
     compEndDate?: string;
     dimensioning?: DimensioningData;
+    availableDays?: Array<{
+        date: string;
+        hdd: number;
+        energy: number;
+    }>;
+    selectedDay?: {
+        date: string;
+        hdd: number;
+        energy: number;
+        expected: number;
+        deviation: number;
+    };
     yesterday?: {
         date: string;
         hdd: number;

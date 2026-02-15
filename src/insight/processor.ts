@@ -29,6 +29,7 @@ export interface YesterdayMeta {
 
 export interface SeriesResult {
     points: Point[];
+    datedPoints: Array<{ x: number; y: number; dateStr: string }>;
     yesterdayPoint: Point | null;
     yesterdayMeta: YesterdayMeta | null;
     m: number;
@@ -276,6 +277,9 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
     //   - classic unconstrained regression on one selected series
     const wwBaseLoad = computeWwBaseLoad(wwMap);
     let points: Point[] = regressionPoints;
+    let datedPoints: Array<{ x: number; y: number; dateStr: string }> = cleanPoints
+        .filter((p) => !p.isYesterday)
+        .map((p) => ({ x: p.x, y: p.y, dateStr: p.dateStr }));
     let yesterdayPoint = regressionYesterdayPoint;
     let yesterdayMeta: YesterdayMeta | null = null;
     let m = 0;
@@ -296,6 +300,9 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
 
         const extracted = extractYesterday(displayRawPoints);
         points = extracted.points;
+        datedPoints = displayRawPoints
+            .filter((p) => !p.isYesterday)
+            .map((p) => ({ x: p.x, y: p.y, dateStr: p.dateStr }));
         yesterdayPoint = extracted.yesterdayPoint;
         yesterdayMeta = extracted.yesterdayMeta;
 
@@ -319,6 +326,7 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
     const { total: totalElecPeriod, dayCount: totalDaysPeriod } = sumMapValues(totalMap);
 
     return {
+        datedPoints,
         points, yesterdayPoint, yesterdayMeta,
         m, b, r2, linePoints,
         deviation, avgEfficiency, avgPowerForHeating,

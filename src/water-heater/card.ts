@@ -334,7 +334,7 @@ export class HeatpumpWaterHeaterCard extends HeatpumpBaseCard {
             <!-- Primary Controls Section -->
             <div class="settings-content">
                 ${e.water_heater_once ? html`
-                    <div class="settings-row">
+                    <div class="settings-row one-time-charge-row">
                         <div class="settings-label">${t.waterHeaterOnce}</div>
                         ${renderSwitchControl(
             t.waterHeaterOnce,

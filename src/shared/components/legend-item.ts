@@ -12,6 +12,10 @@ export const legendItemStyles = css`
         background: none;
         padding: 0;
         margin: 0;
+        color: var(--primary-text-color);
+        font-family: inherit;
+        -webkit-appearance: none;
+        appearance: none;
     }
 
     .legend-item.interactive {
@@ -83,6 +87,10 @@ export const legendItemStyles = css`
 
     .legend-inner {
         width: 100%;
+    }
+
+    .legend-item .now {
+        color: var(--primary-text-color);
     }
 `;
 

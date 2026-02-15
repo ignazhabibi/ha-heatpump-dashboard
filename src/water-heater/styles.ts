@@ -10,4 +10,12 @@ export const styles = css`
     .settings-divider {
         height: 4px;
     }
+
+    .one-time-charge-row .switch-label {
+        display: none;
+    }
+
+    .one-time-charge-row .switch-row {
+        justify-content: flex-end;
+    }
 `;
