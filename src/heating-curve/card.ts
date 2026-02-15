@@ -403,8 +403,18 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
 
             if (this._data) {
                 this._historyData = history;
-                // If we are already in history mode (re-fetch), limit index
-                if (this._playbackIndex >= history.length) this._playbackIndex = history.length - 1;
+                // If we are already in history mode (re-fetch), keep slider index valid
+                if (history.length === 0) {
+                    this._playbackIndex = 0;
+                } else if (this._playbackIndex >= history.length) {
+                    this._playbackIndex = history.length - 1;
+                }
+
+                // Keep chart zoom and marker aligned with the refreshed period data.
+                if (this._isHistoryMode) {
+                    this._updateChartPoint();
+                    this._zoomToHistory();
+                }
             }
 
         } catch (err) {
@@ -515,11 +525,8 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
 
     private _resolveHistoryDisplayFlow(pt: HeatingCurveHistoryPoint | undefined): number | null {
         if (!pt) return null;
-        // Prefer measured flow so deviations to the modeled curve stay visible.
-        if (pt.flow !== null && pt.flow !== undefined) return pt.flow;
-        if (pt.outdoor === null || pt.outdoor === undefined) return null;
-        const modeled = this._getCurveFlowForOutdoor(pt.outdoor);
-        return modeled ?? null;
+        // In history mode we only show measured values; no synthetic fallback.
+        return pt.flow !== null && pt.flow !== undefined ? pt.flow : null;
     }
 
     private _updateChartPoint(): void {
@@ -575,43 +582,67 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
     private _zoomToHistory(): void {
         if (!this._chart || !this._historyData || this._historyData.length === 0) return;
 
-        // Calculate bounds from history
-        let minX = 100, maxX = -100, minY = 100, maxY = -100;
-
-        this._historyData.forEach(pt => {
-            if (pt.outdoor !== null) {
-                if (pt.outdoor < minX) minX = pt.outdoor;
-                if (pt.outdoor > maxX) maxX = pt.outdoor;
-            }
-            const flowForZoom = this._resolveHistoryDisplayFlow(pt);
-            if (flowForZoom !== null) {
-                if (flowForZoom < minY) minY = flowForZoom;
-                if (flowForZoom > maxY) maxY = flowForZoom;
-            }
-        });
-
-        // Add padding (at least 2 degrees X, 5 degrees Y)
-        const padX = Math.max(2, (maxX - minX) * 0.1);
-        const padY = Math.max(5, (maxY - minY) * 0.1);
-
-        minX -= padX;
-        maxX += padX;
-        minY -= padY;
-        maxY += padY;
+        const bounds = this._computeHistoryZoomBounds();
+        if (!bounds) {
+            this._resetZoom();
+            return;
+        }
 
         // Updates scales with animation
         const options = this._chart.options.scales!;
 
         if (options.x) {
-            options.x.min = minX;
-            options.x.max = maxX;
+            options.x.min = bounds.minX;
+            options.x.max = bounds.maxX;
         }
         if (options.y) {
-            options.y.min = minY;
-            options.y.max = maxY;
+            options.y.min = bounds.minY;
+            options.y.max = bounds.maxY;
         }
 
         this._chart.update();
+    }
+
+    private _computeHistoryZoomBounds(): { minX: number; maxX: number; minY: number; maxY: number } | null {
+        if (!this._historyData || this._historyData.length === 0 || !this._data) return null;
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+
+        const includeY = (value: number | null) => {
+            if (value === null || !Number.isFinite(value)) return;
+            if (value < minY) minY = value;
+            if (value > maxY) maxY = value;
+        };
+
+        for (const pt of this._historyData) {
+            if (pt.outdoor === null || pt.outdoor === undefined || !Number.isFinite(pt.outdoor)) continue;
+
+            if (pt.outdoor < minX) minX = pt.outdoor;
+            if (pt.outdoor > maxX) maxX = pt.outdoor;
+
+            // Measured point
+            includeY(this._resolveHistoryDisplayFlow(pt));
+            // Static curve at this outdoor temperature
+            includeY(this._getCurveFlowForOutdoor(pt.outdoor));
+        }
+
+        if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return null;
+        if (!Number.isFinite(minY) || !Number.isFinite(maxY)) return null;
+
+        const spanX = Math.max(0.2, maxX - minX);
+        const spanY = Math.max(0.2, maxY - minY);
+        const padX = Math.max(0.6, spanX * 0.15);
+        const padY = Math.max(1.5, spanY * 0.2);
+
+        return {
+            minX: minX - padX,
+            maxX: maxX + padX,
+            minY: minY - padY,
+            maxY: maxY + padY
+        };
     }
 
     private _resetZoom(): void {
@@ -676,6 +707,7 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
         }
         this._isPlaying = false; // Stop playing when user scrubs
         this._stopAnimation();
+        this._zoomToHistory();
     }
 
     private _exitHistoryMode(): void {
