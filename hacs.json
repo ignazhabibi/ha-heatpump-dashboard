@@ -1,0 +1,6 @@
+{
+    "name": "Heatpump Dashboard",
+    "content_in_root": false,
+    "filename": "dist/heatpump-dashboard.js",
+    "render_readme": true
+}
