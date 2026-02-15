@@ -1,17 +1,6 @@
 import { css } from 'lit';
 
 export const styles = css`
-    .insight-subtitle {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 0;
-        font-size: 0.82rem;
-        color: var(--secondary-text-color);
-        opacity: 0.9;
-        text-align: center;
-        width: 100%;
-    }
-
     .deviation-positive {
         color: var(--error-color, #d32f2f);
         font-weight: 700;

@@ -421,7 +421,6 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         const m = this._data.metrics;
         const range = this._formatDateRange(this._data.startDate, this._data.endDate);
         const qualityShort = m.r2 !== undefined ? `${Math.round(m.r2 * 100)}%` : '-';
-        const heatingLimit = this.config.settings?.heating_limit ?? 15;
         const baseLoadLabel = m.baseLoadSource === 'regression' ? t.baseLoadRegression : t.baseLoad;
         const selectedDay = this._data.selectedDay;
         const selectedEnergy = selectedDay?.energy ?? 0;
@@ -458,10 +457,6 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                     showDateRow: true
                 })}
 
-                <div class="insight-subtitle">
-                    ${range} | ${t.heatingLimit}: ${heatingLimit}°C
-                </div>
-
                 <div class="chart-container">
                     <canvas id="chart"></canvas>
                 </div>
@@ -484,6 +479,13 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                             </div>
                         `
         ) : ''}
+                        ${renderLegendItem(
+            t.currentPeriod,
+            '#2196F3',
+            true,
+            undefined,
+            html`<span class="now">${range}</span>`
+        )}
                     </div>
 
                     <div class="insight-kpis">
