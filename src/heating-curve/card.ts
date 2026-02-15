@@ -515,9 +515,11 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
 
     private _resolveHistoryDisplayFlow(pt: HeatingCurveHistoryPoint | undefined): number | null {
         if (!pt) return null;
-        if (pt.outdoor === null || pt.outdoor === undefined) return pt.flow ?? null;
+        // Prefer measured flow so deviations to the modeled curve stay visible.
+        if (pt.flow !== null && pt.flow !== undefined) return pt.flow;
+        if (pt.outdoor === null || pt.outdoor === undefined) return null;
         const modeled = this._getCurveFlowForOutdoor(pt.outdoor);
-        return modeled ?? pt.flow ?? null;
+        return modeled ?? null;
     }
 
     private _updateChartPoint(): void {
