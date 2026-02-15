@@ -12,7 +12,7 @@
     "coverage": "vitest run --coverage"
   },
   "keywords": [],
-  "author": "Ignaz Habibi",
+  "author": "Michael",
   "license": "MIT",
   "repository": {
     "type": "git",
