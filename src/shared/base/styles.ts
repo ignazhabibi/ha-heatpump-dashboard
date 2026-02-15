@@ -82,7 +82,8 @@ export const baseCardStyles = css`
         align-items: center;
         min-height: 34px;
         padding-top: 8px;
-        padding-bottom: 2px;
+        padding-bottom: 0;
+        margin-bottom: 0;
     }
 
     .action-button {

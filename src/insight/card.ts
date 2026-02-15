@@ -77,7 +77,18 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         if (this._data && !this._chart) {
             this._drawChart();
         } else if (changedProps.has('_data') && this._data) {
-            this._drawChart();
+            const previous = changedProps.get('_data') as InsightChartData | undefined;
+            const datasetsChanged = !previous || previous.datasets !== this._data.datasets;
+            if (datasetsChanged) {
+                this._drawChart();
+                return;
+            }
+
+            const prevDay = previous?.selectedDay?.date || null;
+            const nextDay = this._data.selectedDay?.date || null;
+            if (prevDay !== nextDay) {
+                this._updateSelectedDayMarkerOnly();
+            }
         }
     }
 
@@ -229,16 +240,27 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         const expected = (this._data.metrics.slope * selectedDay.hdd) + this._data.metrics.modelIntercept;
         const deviation = selectedDay.energy - expected;
 
-        this._requestChartTransition();
         this._data = {
             ...this._data,
             selectedDay: {
                 ...selectedDay,
                 expected,
                 deviation
-            },
-            datasets: this._buildDatasets(this._data.linePoints, this._data.availableDays, selectedDay)
+            }
         };
+    }
+
+    private _updateSelectedDayMarkerOnly(): void {
+        if (!this._chart || !this._data?.selectedDay) return;
+
+        const markerDataset = this._chart.data.datasets.find((dataset) => dataset.type === 'scatter' && dataset.order === 0);
+        if (!markerDataset) return;
+
+        markerDataset.data = [{
+            x: this._data.selectedDay.hdd,
+            y: this._data.selectedDay.energy
+        }];
+        this._chart.update('none');
     }
 
     private _formatSelectedDateLabel(): string {

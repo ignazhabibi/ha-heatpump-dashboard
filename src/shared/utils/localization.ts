@@ -283,7 +283,7 @@ const translations: Record<string, Translations> = {
         heatingCurveCardDescription: 'Stellt die aktive Heizkurve mit aktuellem Betriebspunkt dar und unterstützt die Feinabstimmung der Regelung im Live-Betrieb sowie in der Historienanalyse.',
         waterHeaterCardName: 'Wärmepumpe Warmwasser',
         waterHeaterCardDescription: 'Zeigt den Warmwasser-Temperaturverlauf und bindet optional Sollwert, Einmalladung, Hysterese, Modus und Zirkulation ein, um Komfort und Energieeinsatz besser zu bewerten.',
-        insightCardName: 'Effizienz-Vergleich',
+        insightCardName: 'Effizienzvergleich',
         insightCardDescription: 'Analysiert den Zusammenhang zwischen Heizenergie und Heizgradtagen (kD) per Regressionsmodell und macht Basislast, Verbrauch pro Grad sowie Tagesabweichungen transparent.',
 
         // Temperature Card
