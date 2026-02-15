@@ -608,13 +608,21 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
 
         let minX = Infinity;
         let maxX = -Infinity;
-        let minY = Infinity;
-        let maxY = -Infinity;
+        let minMeasuredY = Infinity;
+        let maxMeasuredY = -Infinity;
+        let minCurveY = Infinity;
+        let maxCurveY = -Infinity;
 
-        const includeY = (value: number | null) => {
+        const includeMeasuredY = (value: number | null) => {
             if (value === null || !Number.isFinite(value)) return;
-            if (value < minY) minY = value;
-            if (value > maxY) maxY = value;
+            if (value < minMeasuredY) minMeasuredY = value;
+            if (value > maxMeasuredY) maxMeasuredY = value;
+        };
+
+        const includeCurveY = (value: number | null) => {
+            if (value === null || !Number.isFinite(value)) return;
+            if (value < minCurveY) minCurveY = value;
+            if (value > maxCurveY) maxCurveY = value;
         };
 
         for (const pt of this._historyData) {
@@ -624,24 +632,41 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
             if (pt.outdoor > maxX) maxX = pt.outdoor;
 
             // Measured point
-            includeY(this._resolveHistoryDisplayFlow(pt));
+            includeMeasuredY(this._resolveHistoryDisplayFlow(pt));
             // Static curve at this outdoor temperature
-            includeY(this._getCurveFlowForOutdoor(pt.outdoor));
+            includeCurveY(this._getCurveFlowForOutdoor(pt.outdoor));
         }
 
         if (!Number.isFinite(minX) || !Number.isFinite(maxX)) return null;
-        if (!Number.isFinite(minY) || !Number.isFinite(maxY)) return null;
+        if (!Number.isFinite(minCurveY) || !Number.isFinite(maxCurveY)) return null;
+
+        // If measured values are temporarily missing, use curve values only.
+        if (!Number.isFinite(minMeasuredY) || !Number.isFinite(maxMeasuredY)) {
+            minMeasuredY = minCurveY;
+            maxMeasuredY = maxCurveY;
+        }
 
         const spanX = Math.max(0.2, maxX - minX);
-        const spanY = Math.max(0.2, maxY - minY);
         const padX = Math.max(0.6, spanX * 0.15);
-        const padY = Math.max(1.5, spanY * 0.2);
+
+        // Keep the static curve visually centered while still containing all measured extremes.
+        const curveCenterY = (minCurveY + maxCurveY) / 2;
+        const requiredMinY = Math.min(minCurveY, minMeasuredY);
+        const requiredMaxY = Math.max(maxCurveY, maxMeasuredY);
+        const halfSpan = Math.max(
+            curveCenterY - requiredMinY,
+            requiredMaxY - curveCenterY,
+            0.2
+        );
+        const padY = Math.max(1.5, halfSpan * 0.12);
+        const minY = curveCenterY - (halfSpan + padY);
+        const maxY = curveCenterY + (halfSpan + padY);
 
         return {
             minX: minX - padX,
             maxX: maxX + padX,
-            minY: minY - padY,
-            maxY: maxY + padY
+            minY,
+            maxY
         };
     }
 
