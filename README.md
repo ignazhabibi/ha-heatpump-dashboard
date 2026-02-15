@@ -1,57 +1,66 @@
 # Heatpump Dashboard Cards
 
-A professional collection of Home Assistant Lovelace cards designed for Heat Pump monitoring. Vendor-agnostic (works with Viessmann, Vaillant, Daikin, etc.).
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz/)
+[![CI](https://github.com/ignazhabibi/ha-heatpump-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/ignazhabibi/ha-heatpump-dashboard/actions/workflows/ci.yml)
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ignazhabibi&repository=ha-heatpump-dashboard&category=plugin)
 
-## Cards
+Professional Home Assistant Lovelace cards for heat pump monitoring and optimization.
 
-### 1. Heatpump Energy Balance
-Visualizes power consumption vs. heat generation and calculates the COP (Coefficient of Performance) dynamically.
-* **Features:**
-    * 12h / Day / Month / Year / Total views (Total: rolling multi-year history).
-    * Stacked bars for Heating vs. Hot Water.
-    * Dynamic COP calculation logic.
-    * Responsive touch navigation.
+## Included Cards
 
-### 2. Heatpump Temperatures
-Visualizes flow and return temperatures over time.
-* **Features:**
-    * Comparison of common flow, return, and up to two heating circuits.
-    * Averages calculation per view.
-    * Zoomable timeframes.
+1. Heatpump Energy Balance
+2. Heatpump Temperatures
+3. Heatpump Heating Curve
+4. Heatpump Water Heater
+5. Heatpump Insight (weather-adjusted efficiency)
 
-### 3. Heatpump Heating Curve
-Visualizes heating curve parameters and current operating point.
-* **Features:**
-    * Standard and Viessmann formulas.
-    * Min/max flow limits.
-    * Playback mode for recent history and trend indicators.
-    * Optional quick settings for slope/shift and limits.
+## Screenshots
 
-### 4. Heatpump Water Heater
-Tracks domestic hot water temperature and common DHW controls.
-* **Features:**
-    * Temperature history with averages.
-    * Optional controls for one-time charge, setpoint, hysteresis, and mode.
-    * Status badges for circulation and one-time charge.
+### Main Cards
 
-### 5. Heatpump Insight
-Analyzes weather-adjusted consumption (kD/HDD) and efficiency trends.
-* **Features:**
-    * 30d / 90d / 365d analysis windows.
-    * Regression-based analysis of heating energy vs. degree days (kD).
-    * Clear KPIs: domestic hot water base load, consumption per degree, and control quality (R²).
-    * Split-sensor mode (heating + hot water) with total-sensor fallback.
-    * Highlight for yesterday including actual vs. expected consumption deviation.
+![Energy Balance](docs/images/energiebilanz.png)
+![Temperatures](docs/images/temperaturen.png)
+![Heating Curve](docs/images/heizkurve.png)
+![Water Heater](docs/images/warmwasser.png)
+![Insight](docs/images/effizienzvergleich.png)
 
-## Installation
+### Settings Views
 
-1.  Add this repository to HACS.
-2.  Install "Heatpump Dashboard".
-3.  Add the cards to your dashboard using the UI editor.
+![Energy Settings](docs/images/energiebilanz_ui_config.png)
+![Heating Curve Settings](docs/images/heizkurve_settings.png)
+![Water Heater Settings](docs/images/warmwasser_settings.png)
+
+## Installation (HACS)
+
+1. Open HACS in Home Assistant.
+2. Go to `⋮` -> `Custom repositories`.
+3. Add this repository URL:
+   `https://github.com/ignazhabibi/ha-heatpump-dashboard`
+4. Select type: `Dashboard`.
+5. Install `Heatpump Dashboard Cards`.
+6. Reload Home Assistant frontend (or restart Home Assistant once).
+7. Add cards via dashboard UI (`+ Add card`).
 
 ## Development
 
-* `npm run build` - build `dist/heatpump-dashboard.js`
-* `npm run typecheck` - TypeScript validation (`tsc --noEmit`)
-* `npm test -- --run` - run test suite
-* `npm run coverage` - run tests with coverage report
+- `npm ci` - install dependencies
+- `npm run typecheck` - TypeScript validation
+- `npm test -- --run` - run tests once
+- `npm run build` - build `dist/heatpump-dashboard.js`
+
+## Release for HACS
+
+The project is release-ready via Git tags.
+
+1. Ensure clean state and run validation:
+   - `npm ci`
+   - `npm run typecheck`
+   - `npm test -- --run`
+   - `npm run build`
+2. Commit all changes including `dist/heatpump-dashboard.js`.
+3. Create a semantic version tag (example):
+   - `git tag v1.0.1`
+   - `git push origin main --tags`
+4. GitHub Actions creates the release automatically (`.github/workflows/release.yml`).
+
+Detailed checklist: [`docs/HACS_RELEASE.md`](docs/HACS_RELEASE.md)

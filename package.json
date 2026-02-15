@@ -12,8 +12,16 @@
     "coverage": "vitest run --coverage"
   },
   "keywords": [],
-  "author": "",
+  "author": "Ignaz Habibi",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ignazhabibi/ha-heatpump-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ignazhabibi/ha-heatpump-dashboard/issues"
+  },
+  "homepage": "https://github.com/ignazhabibi/ha-heatpump-dashboard#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",

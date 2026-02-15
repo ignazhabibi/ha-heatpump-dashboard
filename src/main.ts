@@ -24,8 +24,10 @@ interface WindowWithCustomCards extends Window {
     customCards?: CustomCardDefinition[];
 }
 
+const CARD_VERSION = '__PACKAGE_VERSION__';
+
 console.info(
-    "%c HEATPUMP DASHBOARD %c v1.0.0 ",
+    `%c HEATPUMP DASHBOARD %c v${CARD_VERSION} `,
     "color: white; background: #FF9800; font-weight: 700;",
     "color: #FF9800; background: white; font-weight: 700;"
 );
