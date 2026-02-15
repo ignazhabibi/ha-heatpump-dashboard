@@ -498,6 +498,28 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
         return temp;
     }
 
+    private _getCurveFlowForOutdoor(outdoor: number): number | null {
+        if (!this._data) return null;
+        const calculated = this._calculateTemp(
+            outdoor,
+            this._data.slope,
+            this._data.shift,
+            this._data.room_setpoint
+        );
+        return this._clampToLimits(
+            calculated,
+            this._data.min_limit ?? null,
+            this._data.max_limit ?? null
+        );
+    }
+
+    private _resolveHistoryDisplayFlow(pt: HeatingCurveHistoryPoint | undefined): number | null {
+        if (!pt) return null;
+        if (pt.outdoor === null || pt.outdoor === undefined) return pt.flow ?? null;
+        const modeled = this._getCurveFlowForOutdoor(pt.outdoor);
+        return modeled ?? pt.flow ?? null;
+    }
+
     private _updateChartPoint(): void {
         if (!this._chart || !this._data) return;
 
@@ -512,7 +534,7 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
             const pt = this._historyData[this._playbackIndex];
             if (pt) {
                 curOutdoor = pt.outdoor ?? undefined;
-                curFlow = pt.flow ?? undefined;
+                curFlow = this._resolveHistoryDisplayFlow(pt) ?? undefined;
             }
         } else {
             curOutdoor = this._liveOutdoor ?? this._data.current_outdoor;
@@ -559,9 +581,10 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
                 if (pt.outdoor < minX) minX = pt.outdoor;
                 if (pt.outdoor > maxX) maxX = pt.outdoor;
             }
-            if (pt.flow !== null) {
-                if (pt.flow < minY) minY = pt.flow;
-                if (pt.flow > maxY) maxY = pt.flow;
+            const flowForZoom = this._resolveHistoryDisplayFlow(pt);
+            if (flowForZoom !== null) {
+                if (flowForZoom < minY) minY = flowForZoom;
+                if (flowForZoom > maxY) maxY = flowForZoom;
             }
         });
 
@@ -750,7 +773,7 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
             const historyPt = this._historyData[this._playbackIndex];
             if (historyPt) {
                 curOutdoor = historyPt.outdoor ?? undefined;
-                curFlow = historyPt.flow ?? undefined;
+                curFlow = this._resolveHistoryDisplayFlow(historyPt) ?? undefined;
                 const date = new Date(historyPt.timestamp);
                 const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 labelPrefix = `${timeStr} `;
@@ -853,7 +876,8 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
             const pt = this._historyData[this._playbackIndex];
             if (pt) {
                 curOutdoor = pt.outdoor !== null ? pt.outdoor.toFixed(1) : '-';
-                curFlow = pt.flow !== null ? pt.flow.toFixed(1) : '-';
+                const displayFlow = this._resolveHistoryDisplayFlow(pt);
+                curFlow = displayFlow !== null ? displayFlow.toFixed(1) : '-';
 
                 const d = new Date(pt.timestamp);
                 const now = new Date();
@@ -880,7 +904,10 @@ export class HeatpumpHeatingCurveCard extends HeatpumpBaseCard {
                     const prevPt = this._historyData[prevIdx];
                     if (currentPt && prevPt) {
                         outdoorTrend = this._getTrend(currentPt.outdoor, prevPt.outdoor);
-                        flowTrend = this._getTrend(currentPt.flow, prevPt.flow);
+                        flowTrend = this._getTrend(
+                            this._resolveHistoryDisplayFlow(currentPt),
+                            this._resolveHistoryDisplayFlow(prevPt)
+                        );
                     }
                 }
             }

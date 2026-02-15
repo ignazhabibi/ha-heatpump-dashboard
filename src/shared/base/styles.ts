@@ -79,8 +79,8 @@ export const baseCardStyles = css`
     .footer-actions {
         display: flex;
         justify-content: flex-end;
-        align-items: center;
-        min-height: 34px;
+        align-items: flex-end;
+        min-height: 28px;
         padding-top: 8px;
         padding-bottom: 0;
         margin-bottom: 0;
