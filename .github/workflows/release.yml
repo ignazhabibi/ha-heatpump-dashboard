@@ -35,12 +35,11 @@ jobs:
         run: npm run build
 
       - name: Verify dist is up to date
-        run: git diff --exit-code dist/ha-heatpump-dashboard.js
+        run: git diff --exit-code dist/heatpump-dashboard.js
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
-            dist/ha-heatpump-dashboard.js
+            dist/heatpump-dashboard.js

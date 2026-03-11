@@ -75,7 +75,7 @@ All cards can be configured directly in the Home Assistant UI editor.
    - `npm run typecheck`
    - `npm test -- --run`
    - `npm run build`
-2. Commit changes including `dist/ha-heatpump-dashboard.js`.
+2. Commit changes including `dist/heatpump-dashboard.js`.
 3. Create and push a semantic version tag, for example:
    - `git tag v1.0.1`
    - `git push origin main --tags`

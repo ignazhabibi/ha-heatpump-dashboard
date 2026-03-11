@@ -283,7 +283,6 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         }
 
         const end = new Date();
-        end.setHours(0, 0, 0, 0); // Clamp to start of today so only complete days are queried
         const start = new Date(end);
         start.setDate(end.getDate() - this._periodDays());
 
