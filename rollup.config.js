@@ -21,7 +21,7 @@ function injectPackageVersion() {
 export default {
     input: 'src/main.ts',
     output: {
-        file: 'dist/ha-heatpump-dashboard.js',
+        file: 'dist/heatpump-dashboard.js',
         format: 'es',
         sourcemap: false,
     },
