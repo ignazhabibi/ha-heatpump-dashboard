@@ -11,7 +11,7 @@ This checklist is optional but helps keep releases consistent and easy to verify
    - `npm run typecheck`
    - `npm test -- --run`
    - `npm run build`
-4. Confirm `dist/heatpump-dashboard.js` is up to date
+4. Confirm `dist/ha-heatpump-dashboard.js` is up to date
 5. Commit all release-related changes
 
 ## 2. Create the Release
@@ -35,7 +35,7 @@ The workflow in `.github/workflows/release.yml` runs on tag push and performs:
 Required in the repository:
 
 - `hacs.json` exists
-- `hacs.json.filename` points to `dist/heatpump-dashboard.js`
+- `hacs.json.filename` points to `dist/ha-heatpump-dashboard.js`
 - built file is included in the tagged commit
 
 After release in Home Assistant:
