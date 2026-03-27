@@ -18,6 +18,11 @@ import { canGoNext, calculateDateRange } from '../shared/utils/date-helpers';
 import { TimeSeriesProcessor } from '../shared/utils/time-series-processor';
 import { ChartConfigFactory } from '../shared/config/chart-config';
 import { RecorderStatisticsResult } from '../shared/utils/ha-statistics';
+import {
+    getBucketResolution,
+    loadRecorderStatistics,
+    type RecorderStatisticsPeriod
+} from '../shared/utils/recorder-statistics';
 import { readStorageJson, writeStorageJson } from '../shared/utils/storage';
 import { HeatpumpBaseCard } from '../shared/base/base-card';
 import { styles } from './styles';
@@ -120,11 +125,7 @@ export class HeatpumpWaterHeaterCard extends HeatpumpBaseCard {
         if (!this.hass || !this.config.entities) return;
         const requestId = ++this._fetchRequestId;
 
-        let { start, end, period } = calculateDateRange(this._currentDate, this._viewMode);
-        // Override period for high-resolution views
-        if (this._viewMode === '12h' || this._viewMode === 'day') {
-            period = '5minute';
-        }
+        const { start, end, period } = calculateDateRange(this._currentDate, this._viewMode);
 
         const ids: string[] = [];
         const e = this.config.entities;
@@ -136,22 +137,31 @@ export class HeatpumpWaterHeaterCard extends HeatpumpBaseCard {
         }
 
         try {
-            const stats = await this.hass.callWS({
-                type: "recorder/statistics_during_period",
-                start_time: start.toISOString(), end_time: end.toISOString(),
-                statistic_ids: ids, period: period, types: ["mean"],
-            }) as RecorderStatisticsResult;
+            const { stats, period: effectivePeriod } = await loadRecorderStatistics({
+                hass: this.hass,
+                start,
+                end,
+                statisticIds: ids,
+                period,
+                types: ['mean'],
+                viewMode: this._viewMode
+            });
             if (requestId !== this._fetchRequestId) return;
-            this._processData(stats, start, end);
+            this._processData(stats, start, end, effectivePeriod);
         } catch (e) {
             if (requestId !== this._fetchRequestId) return;
             console.error("Fetch Error:", e);
         }
     }
 
-    private _processData(stats: RecorderStatisticsResult, start: Date, end: Date): void {
+    private _processData(
+        stats: RecorderStatisticsResult,
+        start: Date,
+        end: Date,
+        period: RecorderStatisticsPeriod
+    ): void {
         const e = this.config.entities;
-        const resolution = (this._viewMode === '12h' || this._viewMode === 'day') ? '5minute' : undefined;
+        const resolution = getBucketResolution(this._viewMode, period);
 
         const buckets = TimeSeriesProcessor.generateBuckets(start, end, {
             viewMode: this._viewMode,
