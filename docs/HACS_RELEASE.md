@@ -38,7 +38,7 @@ The workflow in `.github/workflows/release.yml` runs on tag push and performs:
 Required in the repository:
 
 - `hacs.json` exists
-- `hacs.json.filename` points to `dist/heatpump-dashboard.js`
+- `hacs.json.filename` is `heatpump-dashboard.js` and the file exists in `dist/`
 - built file is included in the tagged commit
 
 After release in Home Assistant:
