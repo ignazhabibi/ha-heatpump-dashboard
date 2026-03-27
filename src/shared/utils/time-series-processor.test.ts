@@ -30,6 +30,20 @@ describe('TimeSeriesProcessor', () => {
 
             expect(buckets.length).toBe(12);
         });
+
+        it('should generate one bucket per calendar day for month view across DST', () => {
+            const start = new Date('2026-10-01T00:00:00');
+            const end = new Date('2026-10-31T23:59:59');
+
+            const buckets = TimeSeriesProcessor.generateBuckets(start, end, {
+                viewMode: 'month',
+                language: 'en'
+            });
+
+            expect(buckets.length).toBe(31);
+            expect(new Date(buckets[0].start).getDate()).toBe(1);
+            expect(new Date(buckets[30].start).getDate()).toBe(31);
+        });
     });
 
     describe('aggregate', () => {
@@ -94,6 +108,68 @@ describe('TimeSeriesProcessor', () => {
 
             const result = TimeSeriesProcessor.aggregate([], buckets, 'mean');
             expect(result[0]).toBeNull();
+        });
+
+        it('should aggregate hourly stats into every day of a month view', () => {
+            const start = new Date('2023-03-01T00:00:00');
+            const end = new Date('2023-03-03T23:59:59');
+
+            const buckets = TimeSeriesProcessor.generateBuckets(start, end, {
+                viewMode: 'month',
+                language: 'en'
+            });
+
+            const stats = [
+                { start: '2023-03-01T01:00:00.000Z', mean: 10 },
+                { start: '2023-03-02T01:00:00.000Z', mean: 20 },
+                { start: '2023-03-03T01:00:00.000Z', mean: 30 }
+            ];
+
+            const result = TimeSeriesProcessor.aggregate(stats, buckets, 'mean');
+
+            expect(result).toEqual([10, 20, 30]);
+        });
+
+        it('should aggregate daily stats into month buckets for year view', () => {
+            const start = new Date('2023-01-01T00:00:00');
+            const end = new Date('2023-12-31T23:59:59');
+
+            const buckets = TimeSeriesProcessor.generateBuckets(start, end, {
+                viewMode: 'year',
+                language: 'en'
+            });
+
+            const stats = [
+                { start: '2023-01-15T00:00:00.000Z', mean: 10 },
+                { start: '2023-02-15T00:00:00.000Z', mean: 20 },
+                { start: '2023-03-15T00:00:00.000Z', mean: 30 }
+            ];
+
+            const result = TimeSeriesProcessor.aggregate(stats, buckets, 'mean');
+
+            expect(result[0]).toBe(10);
+            expect(result[1]).toBe(20);
+            expect(result[2]).toBe(30);
+        });
+
+        it('should aggregate daily stats into year buckets for total view', () => {
+            const start = new Date('2022-01-01T00:00:00');
+            const end = new Date('2024-12-31T23:59:59');
+
+            const buckets = TimeSeriesProcessor.generateBuckets(start, end, {
+                viewMode: 'total',
+                language: 'en'
+            });
+
+            const stats = [
+                { start: '2022-06-15T00:00:00.000Z', mean: 10 },
+                { start: '2023-06-15T00:00:00.000Z', mean: 20 },
+                { start: '2024-06-15T00:00:00.000Z', mean: 30 }
+            ];
+
+            const result = TimeSeriesProcessor.aggregate(stats, buckets, 'mean');
+
+            expect(result).toEqual([10, 20, 30]);
         });
     });
 });

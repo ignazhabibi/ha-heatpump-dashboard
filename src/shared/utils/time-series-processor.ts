@@ -54,16 +54,16 @@ export class TimeSeriesProcessor {
                 buckets.push({ start: t.getTime(), end: t.getTime() + step, label });
             }
         } else if (viewMode === 'month') {
-            // Daily resolution
-            const days = Math.ceil((endTime - startTime) / 86400000);
-            for (let i = 0; i < days; i++) {
-                const t = new Date(startTime + (i * 86400000));
-                if (t.getTime() > endTime) break;
+            // Daily resolution with calendar boundaries to avoid DST drift.
+            let t = new Date(start);
+            while (t.getTime() <= endTime) {
+                const nextDay = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1);
                 buckets.push({
                     start: t.getTime(),
-                    end: t.getTime() + 86400000,
+                    end: nextDay.getTime(),
                     label: fmtDay.format(t)
                 });
+                t = nextDay;
             }
         } else if (viewMode === 'year') {
             // Monthly resolution

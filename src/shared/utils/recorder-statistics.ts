@@ -31,6 +31,32 @@ export function hasRecorderStatisticsPoints(
     return statisticIds.some((id) => (stats[id]?.length ?? 0) > 0);
 }
 
+export function countStatisticIdsWithPoints(
+    stats: RecorderStatisticsResult,
+    statisticIds: string[]
+): number {
+    return statisticIds.filter((id) => (stats[id]?.length ?? 0) > 0).length;
+}
+
+export function getPreferredStatisticsPeriods(
+    viewMode: ViewMode,
+    period: RecorderStatisticsPeriod
+): RecorderStatisticsPeriod[] {
+    if (prefersHighResolutionStatistics(viewMode)) {
+        return ['5minute', 'hour'];
+    }
+
+    if (period === 'day') {
+        return ['hour', 'day'];
+    }
+
+    if (period === 'month') {
+        return ['day', 'month'];
+    }
+
+    return [period];
+}
+
 export function getBucketResolution(
     viewMode: ViewMode,
     period: RecorderStatisticsPeriod
@@ -59,13 +85,27 @@ export async function loadRecorderStatistics({
         }) as Promise<RecorderStatisticsResult>;
     };
 
-    const preferredPeriod = prefersHighResolutionStatistics(viewMode) ? '5minute' : period;
-    const preferredStats = await fetchStats(preferredPeriod);
+    const preferredPeriods = getPreferredStatisticsPeriods(viewMode, period);
+    let bestResult: LoadRecorderStatisticsResult | null = null;
+    let bestCoverage = -1;
 
-    if (preferredPeriod !== '5minute' || hasRecorderStatisticsPoints(preferredStats, statisticIds)) {
-        return { stats: preferredStats, period: preferredPeriod };
+    for (const requestedPeriod of preferredPeriods) {
+        const stats = await fetchStats(requestedPeriod);
+        const coverage = countStatisticIdsWithPoints(stats, statisticIds);
+
+        if (coverage > bestCoverage) {
+            bestCoverage = coverage;
+            bestResult = { stats, period: requestedPeriod };
+        }
+
+        if (coverage === statisticIds.length) {
+            return { stats, period: requestedPeriod };
+        }
     }
 
-    const fallbackStats = await fetchStats('hour');
-    return { stats: fallbackStats, period: 'hour' };
+    if (bestResult) {
+        return bestResult;
+    }
+
+    return { stats: {}, period };
 }
