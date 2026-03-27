@@ -8,6 +8,8 @@ import {
 import { filterOutliersByResidual, computeRegression } from './math';
 import { FIXTURE_NOW, insightStats365, insightStatsLongterm } from './test-fixtures';
 
+const TEST_TIME_ZONE = 'UTC';
+
 interface PeriodDef {
     label: string;
     filterStart: Date | null;
@@ -49,18 +51,19 @@ describe('Period-specific validation', () => {
         describe(period.label, () => {
             const statsForPeriod = period.useLongtermData ? insightStatsLongterm : insightStats365;
 
-            const { heatingMap, totalMap, wwMap } = buildEnergyMaps(
-                statsForPeriod, 'sensor.heating', 'sensor.hotwater'
+            const { heatingMap } = buildEnergyMaps(
+                statsForPeriod, 'sensor.heating', 'sensor.hotwater', TEST_TIME_ZONE
             );
-            const tempMap = buildTempMap(statsForPeriod, 'sensor.temp');
-
-            const todayStr = FIXTURE_NOW.toDateString();
-            heatingMap.delete(todayStr);
-            totalMap.delete(todayStr);
-            wwMap.delete(todayStr);
+            const tempMap = buildTempMap(statsForPeriod, 'sensor.temp', TEST_TIME_ZONE);
 
             const rawPoints = buildRawPoints(
-                heatingMap, tempMap, 15, period.filterStart, false
+                heatingMap,
+                tempMap,
+                15,
+                period.filterStart,
+                false,
+                false,
+                { timeZone: TEST_TIME_ZONE, now: FIXTURE_NOW }
             );
 
             const { clean: cleanPoints, removedDates } = filterOutliersByResidual(rawPoints);

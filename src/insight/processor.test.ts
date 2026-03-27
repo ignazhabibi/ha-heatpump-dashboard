@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildEnergyMaps, buildTempMap, buildRawPoints, extractYesterday, processInsightSeries } from './processor';
+import { buildDayKey, buildEnergyMaps, buildTempMap, buildRawPoints, extractYesterday, processInsightSeries } from './processor';
 import { RawPoint } from './math';
+
+const TEST_TIME_ZONE = 'UTC';
+const dayKey = (value: string): string => buildDayKey(new Date(value), TEST_TIME_ZONE);
 
 // ─── buildEnergyMaps ─────────────────────────────────────────────────────────
 
@@ -16,10 +19,10 @@ describe('buildEnergyMaps', () => {
                 { start: '2024-01-16T00:00:00Z', change: 4 },
             ],
         };
-        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', 'sensor.hotwater');
+        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', 'sensor.hotwater', TEST_TIME_ZONE);
 
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
-        const d2 = new Date('2024-01-16T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
+        const d2 = dayKey('2024-01-16T00:00:00Z');
 
         expect(heatingMap.get(d1)).toBe(10);
         expect(heatingMap.get(d2)).toBe(15);
@@ -35,9 +38,9 @@ describe('buildEnergyMaps', () => {
                 { start: '2024-01-15T00:00:00Z', change: 10 },
             ],
         };
-        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', undefined);
+        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', undefined, TEST_TIME_ZONE);
 
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         expect(heatingMap.get(d1)).toBe(10);
         expect(totalMap.get(d1)).toBe(10);
         expect(wwMap.size).toBe(0);
@@ -49,9 +52,9 @@ describe('buildEnergyMaps', () => {
                 { start: '2024-01-15T00:00:00Z', change: 5 },
             ],
         };
-        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, undefined, 'sensor.hotwater');
+        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, undefined, 'sensor.hotwater', TEST_TIME_ZONE);
 
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         expect(heatingMap.size).toBe(0);
         expect(totalMap.get(d1)).toBe(5);
         expect(wwMap.get(d1)).toBe(5);
@@ -64,8 +67,8 @@ describe('buildEnergyMaps', () => {
                 { start: '2024-01-15T12:00:00Z', change: 7 },
             ],
         };
-        const { heatingMap } = buildEnergyMaps(stats, 'sensor.heating', undefined);
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const { heatingMap } = buildEnergyMaps(stats, 'sensor.heating', undefined, TEST_TIME_ZONE);
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         expect(heatingMap.get(d1)).toBe(12);
     });
 
@@ -80,12 +83,25 @@ describe('buildEnergyMaps', () => {
                 { start: '2024-01-15T12:00:00Z', change: 3 },
             ],
         };
-        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', 'sensor.hotwater');
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, 'sensor.heating', 'sensor.hotwater', TEST_TIME_ZONE);
+        const d1 = dayKey('2024-01-15T00:00:00Z');
 
         expect(heatingMap.get(d1)).toBe(7);
         expect(wwMap.get(d1)).toBe(3);
         expect(totalMap.get(d1)).toBe(10);
+    });
+
+    it('uses the configured timezone for daily bucket keys', () => {
+        const stats = {
+            'sensor.heating': [
+                { start: '2024-01-15T00:00:00Z', change: 10 },
+            ],
+        };
+
+        const { heatingMap } = buildEnergyMaps(stats, 'sensor.heating', undefined, 'America/Los_Angeles');
+
+        expect(heatingMap.get('2024-01-14')).toBe(10);
+        expect(heatingMap.has('2024-01-15')).toBe(false);
     });
 });
 
@@ -99,9 +115,9 @@ describe('buildTempMap', () => {
                 { start: '2024-01-16T00:00:00Z', mean: -2.0 },
             ],
         };
-        const map = buildTempMap(stats, 'sensor.temp');
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
-        const d2 = new Date('2024-01-16T00:00:00Z').toDateString();
+        const map = buildTempMap(stats, 'sensor.temp', TEST_TIME_ZONE);
+        const d1 = dayKey('2024-01-15T00:00:00Z');
+        const d2 = dayKey('2024-01-16T00:00:00Z');
         expect(map.get(d1)).toBe(5.5);
         expect(map.get(d2)).toBe(-2.0);
     });
@@ -118,7 +134,7 @@ describe('buildRawPoints', () => {
     it('builds HDD-based scatter points', () => {
         const energyMap = new Map<string, number>();
         const tempMap = new Map<string, number>();
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         energyMap.set(d1, 20);
         tempMap.set(d1, 5);
 
@@ -132,7 +148,7 @@ describe('buildRawPoints', () => {
     it('clamps HDD to zero for warm days', () => {
         const energyMap = new Map<string, number>();
         const tempMap = new Map<string, number>();
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         energyMap.set(d1, 5);
         tempMap.set(d1, 20); // Above heating limit
 
@@ -143,7 +159,7 @@ describe('buildRawPoints', () => {
     it('skips dates without temperature data', () => {
         const energyMap = new Map<string, number>();
         const tempMap = new Map<string, number>();
-        const d1 = new Date('2024-01-15T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
         energyMap.set(d1, 20);
         // No temp for d1
 
@@ -154,30 +170,67 @@ describe('buildRawPoints', () => {
     it('respects filterStart', () => {
         const energyMap = new Map<string, number>();
         const tempMap = new Map<string, number>();
-        const d1 = new Date('2024-01-01T00:00:00Z').toDateString();
-        const d2 = new Date('2024-01-20T00:00:00Z').toDateString();
+        const d1 = dayKey('2024-01-01T00:00:00Z');
+        const d2 = dayKey('2024-01-20T00:00:00Z');
         energyMap.set(d1, 10);
         energyMap.set(d2, 20);
         tempMap.set(d1, 5);
         tempMap.set(d2, 5);
 
         const filterStart = new Date('2024-01-15T00:00:00Z');
-        const points = buildRawPoints(energyMap, tempMap, 15, filterStart, false);
+        const points = buildRawPoints(energyMap, tempMap, 15, filterStart, false, false, { timeZone: TEST_TIME_ZONE });
         expect(points).toHaveLength(1);
         expect(points[0].y).toBe(20); // Only the point after filterStart
+    });
+
+    it('treats filterStart as a full-day boundary', () => {
+        const energyMap = new Map<string, number>();
+        const tempMap = new Map<string, number>();
+        const d1 = dayKey('2024-01-15T00:00:00Z');
+        const d2 = dayKey('2024-01-16T00:00:00Z');
+        energyMap.set(d1, 10);
+        energyMap.set(d2, 20);
+        tempMap.set(d1, 5);
+        tempMap.set(d2, 5);
+
+        const filterStart = new Date('2024-01-15T12:00:00Z');
+        const points = buildRawPoints(energyMap, tempMap, 15, filterStart, false, false, { timeZone: TEST_TIME_ZONE });
+        expect(points).toHaveLength(2);
+    });
+
+    it('excludes the current incomplete day from the point set', () => {
+        const energyMap = new Map<string, number>();
+        const tempMap = new Map<string, number>();
+        energyMap.set('2024-01-19', 10);
+        energyMap.set('2024-01-20', 99);
+        tempMap.set('2024-01-19', 5);
+        tempMap.set('2024-01-20', 5);
+
+        const points = buildRawPoints(
+            energyMap,
+            tempMap,
+            15,
+            null,
+            false,
+            false,
+            { timeZone: TEST_TIME_ZONE, now: new Date('2024-01-20T12:00:00Z') }
+        );
+
+        expect(points).toHaveLength(1);
+        expect(points[0].dateStr).toBe('2024-01-19');
     });
 
     it('can exclude non-heating days with HDD = 0', () => {
         const energyMap = new Map<string, number>();
         const tempMap = new Map<string, number>();
-        const warmDay = new Date('2024-06-15T00:00:00Z').toDateString();
-        const coldDay = new Date('2024-01-15T00:00:00Z').toDateString();
+        const warmDay = dayKey('2024-06-15T00:00:00Z');
+        const coldDay = dayKey('2024-01-15T00:00:00Z');
         energyMap.set(warmDay, 2);
         energyMap.set(coldDay, 20);
         tempMap.set(warmDay, 18); // HDD = 0
         tempMap.set(coldDay, 5);  // HDD = 10
 
-        const points = buildRawPoints(energyMap, tempMap, 15, null, false, true);
+        const points = buildRawPoints(energyMap, tempMap, 15, null, false, true, { timeZone: TEST_TIME_ZONE });
         expect(points).toHaveLength(1);
         expect(points[0].x).toBe(10);
         expect(points[0].y).toBe(20);
@@ -236,7 +289,7 @@ describe('processInsightSeries', () => {
         const tempData: any[] = [];
 
         for (let i = 0; i < days; i++) {
-            const date = new Date(2024, 0, i + 1); // Jan 1..N, 2024
+            const date = new Date(Date.UTC(2024, 0, i + 1)); // Jan 1..N, 2024
             const temp = 15 - i * 1.5; // Temperature drops: 15, 13.5, 12, ...
             const hdd = Math.max(0, 15 - temp);
             const energy = 2 * hdd + 3; // Perfect linear: y = 2x + 3
@@ -349,5 +402,35 @@ describe('processInsightSeries', () => {
         expect(result!.linePoints[0].y).toBeCloseTo(4.0, 6);
         // Display points are total consumption (heating + WW).
         expect(result!.points[0].y).toBeGreaterThanOrEqual(23);
+    });
+
+    it('drops the current incomplete day from processed series results', () => {
+        const stats = {
+            'sensor.heating': [
+                { start: '2024-01-18T00:00:00Z', change: 20 },
+                { start: '2024-01-19T00:00:00Z', change: 25 },
+                { start: '2024-01-20T00:00:00Z', change: 999 },
+            ],
+            'sensor.temp': [
+                { start: '2024-01-18T00:00:00Z', mean: 5 },
+                { start: '2024-01-19T00:00:00Z', mean: 4 },
+                { start: '2024-01-20T00:00:00Z', mean: 3 },
+            ],
+        };
+
+        const result = processInsightSeries({
+            stats,
+            heatingId: 'sensor.heating',
+            hotwaterId: undefined,
+            tempId: 'sensor.temp',
+            heatingLimit: 15,
+            identifyYesterday: false,
+            filterStart: new Date('2024-01-18T12:00:00Z'),
+            timeZone: TEST_TIME_ZONE,
+            now: new Date('2024-01-20T12:00:00Z')
+        });
+
+        expect(result).not.toBeNull();
+        expect(result!.datedPoints.map((point) => point.dateStr)).toEqual(['2024-01-18', '2024-01-19']);
     });
 });

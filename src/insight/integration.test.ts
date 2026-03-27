@@ -12,6 +12,8 @@ import {
 } from './math';
 import { FIXTURE_NOW, insightStats365 } from './test-fixtures';
 
+const TEST_TIME_ZONE = 'UTC';
+
 describe('Data Loading (365 days window)', () => {
     it('has sufficient hourly data points', () => {
         const heatingHours = insightStats365['sensor.heating'].length;
@@ -21,13 +23,18 @@ describe('Data Loading (365 days window)', () => {
 });
 
 describe('Standard Year Analysis (synthetic baseline)', () => {
-    const { heatingMap } = buildEnergyMaps(insightStats365, 'sensor.heating', 'sensor.hotwater');
-    const tempMap = buildTempMap(insightStats365, 'sensor.temp');
+    const { heatingMap } = buildEnergyMaps(insightStats365, 'sensor.heating', 'sensor.hotwater', TEST_TIME_ZONE);
+    const tempMap = buildTempMap(insightStats365, 'sensor.temp', TEST_TIME_ZONE);
 
-    const todayStr = FIXTURE_NOW.toDateString();
-    heatingMap.delete(todayStr);
-
-    const rawPoints = buildRawPoints(heatingMap, tempMap, 15, null, false);
+    const rawPoints = buildRawPoints(
+        heatingMap,
+        tempMap,
+        15,
+        null,
+        false,
+        false,
+        { timeZone: TEST_TIME_ZONE, now: FIXTURE_NOW }
+    );
     const { clean, removedDates } = filterOutliersByResidual(rawPoints);
     extractYesterday(clean);
 
@@ -38,7 +45,9 @@ describe('Standard Year Analysis (synthetic baseline)', () => {
         tempId: 'sensor.temp',
         heatingLimit: 15,
         identifyYesterday: false,
-        filterStart: null
+        filterStart: null,
+        timeZone: TEST_TIME_ZONE,
+        now: FIXTURE_NOW
     });
 
     it('returns valid result', () => {

@@ -127,10 +127,20 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
     }
 
     private _formatDateRange(startIso: string, endIso: string): string {
-        const lang = this.hass?.language || 'en';
-        const start = new Date(startIso).toLocaleDateString(lang, { day: '2-digit', month: '2-digit' });
-        const end = new Date(endIso).toLocaleDateString(lang, { day: '2-digit', month: '2-digit' });
+        if (!startIso || !endIso) return '';
+        const start = this._formatDayKey(startIso, { day: '2-digit', month: '2-digit' });
+        const end = this._formatDayKey(endIso, { day: '2-digit', month: '2-digit' });
         return `${start} - ${end}`;
+    }
+
+    private _parseDayKey(dayKey: string): Date {
+        const [year, month, day] = dayKey.split('-').map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0, 0);
+    }
+
+    private _formatDayKey(dayKey: string, options: Intl.DateTimeFormatOptions): string {
+        if (!dayKey) return '';
+        return this._parseDayKey(dayKey).toLocaleDateString(this.hass?.language || 'en', options);
     }
 
     private _setPeriod(period: InsightPeriod): void {
@@ -141,7 +151,7 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
     }
 
     private _toSortedDays(days: InsightDayPoint[]): InsightDayPoint[] {
-        return [...days].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        return [...days].sort((a, b) => a.date.localeCompare(b.date));
     }
 
     private _resolveSelectedDay(days: InsightDayPoint[]): InsightDayPoint | null {
@@ -154,10 +164,9 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         const exact = sortedDays.find((d) => d.date === requested);
         if (exact) return exact;
 
-        const requestedTs = new Date(requested).getTime();
         let fallback = sortedDays[0];
         for (const day of sortedDays) {
-            if (new Date(day.date).getTime() <= requestedTs) {
+            if (day.date <= requested) {
                 fallback = day;
                 continue;
             }
@@ -265,7 +274,7 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
 
     private _formatSelectedDateLabel(): string {
         if (!this._data?.selectedDay) return '';
-        return new Date(this._data.selectedDay.date).toLocaleDateString(this.hass?.language || 'en', {
+        return this._formatDayKey(this._data.selectedDay.date, {
             day: 'numeric',
             month: 'long',
             year: 'numeric'
@@ -285,6 +294,7 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
         const end = new Date();
         const start = new Date(end);
         start.setDate(end.getDate() - this._periodDays());
+        const timeZone = this.hass.config.time_zone || 'UTC';
 
         const ids = [...energy.ids, this.config.entities.outdoor_temp].filter(Boolean) as string[];
 
@@ -307,7 +317,9 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                 heatingLimit: this.config.settings?.heating_limit || 15,
                 identifyYesterday: false,
                 filterStart: start,
-                excludeZeroHddDays: energy.mode !== 'fallback_total'
+                excludeZeroHddDays: energy.mode !== 'fallback_total',
+                timeZone,
+                now: end
             });
 
             if (!result) {
@@ -337,6 +349,8 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                 : 0;
 
             const datasets = this._buildDatasets(result.linePoints, availableDays, selectedDay);
+            const rangeStart = availableDays[0]?.date || '';
+            const rangeEnd = availableDays[availableDays.length - 1]?.date || '';
 
             this._data = {
                 linePoints: result.linePoints,
@@ -360,8 +374,8 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                 },
                 modeLabel: `${this._periodDays()}d`,
                 compLabel: '',
-                startDate: start.toISOString(),
-                endDate: end.toISOString()
+                startDate: rangeStart,
+                endDate: rangeEnd
             };
         } catch (e) {
             if (requestId !== this._fetchRequestId) return;
@@ -486,7 +500,7 @@ export class HeatpumpInsightCard extends HeatpumpBaseCard {
                 <div class="card-footer">
                     <div class="legend">
                         ${selectedDay ? renderLegendItem(
-            `${t.viewDay} (${new Date(selectedDay.date).toLocaleDateString(this.hass.language || 'en', { day: '2-digit', month: '2-digit' })})`,
+            `${t.viewDay} (${this._formatDayKey(selectedDay.date, { day: '2-digit', month: '2-digit' })})`,
             '#FF9800',
             true,
             undefined,
