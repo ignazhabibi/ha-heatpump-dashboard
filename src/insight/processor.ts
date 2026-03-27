@@ -54,9 +54,44 @@ export interface ProcessSeriesParams {
     identifyYesterday: boolean;
     filterStart: Date | null;
     excludeZeroHddDays?: boolean;
+    timeZone?: string;
+    now?: Date;
 }
 
 // ─── Functions ───────────────────────────────────────────────────────────────
+
+const dayKeyFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getDayKeyFormatter(timeZone: string): Intl.DateTimeFormat {
+    const cached = dayKeyFormatterCache.get(timeZone);
+    if (cached) return cached;
+
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    dayKeyFormatterCache.set(timeZone, formatter);
+    return formatter;
+}
+
+export function buildDayKey(date: Date, timeZone: string = 'UTC'): string {
+    const parts = getDayKeyFormatter(timeZone).formatToParts(date);
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    if (!year || !month || !day) {
+        throw new Error(`Unable to build day key for timezone ${timeZone}`);
+    }
+
+    return `${year}-${month}-${day}`;
+}
+
+function buildStatDayKey(start: string, timeZone: string): string {
+    return buildDayKey(new Date(start), timeZone);
+}
 
 function computeRegressionThroughOrigin(points: Point[]): { m: number } {
     const denom = points.reduce((sum, p) => sum + (p.x * p.x), 0);
@@ -90,7 +125,8 @@ function computeModelR2(points: Point[], m: number, b: number): number {
 export function buildEnergyMaps(
     stats: RecorderStatisticsResult,
     heatingId: string | undefined,
-    hotwaterId: string | undefined
+    hotwaterId: string | undefined,
+    timeZone: string = 'UTC'
 ): { heatingMap: Map<string, number>; totalMap: Map<string, number>; wwMap: Map<string, number> } {
     const heatingMap = new Map<string, number>();
     const totalMap = new Map<string, number>();
@@ -98,7 +134,7 @@ export function buildEnergyMaps(
 
     if (heatingId && stats[heatingId]) {
         stats[heatingId].forEach((e: RecorderStatisticPoint) => {
-            const key = new Date(e.start).toDateString();
+            const key = buildStatDayKey(e.start, timeZone);
             // Clamp invalid/negative deltas (e.g. counter resets) to 0
             // so they don't distort regression and period sums.
             const raw = Number(e.change);
@@ -109,7 +145,7 @@ export function buildEnergyMaps(
     }
     if (hotwaterId && stats[hotwaterId]) {
         stats[hotwaterId].forEach((e: RecorderStatisticPoint) => {
-            const key = new Date(e.start).toDateString();
+            const key = buildStatDayKey(e.start, timeZone);
             const raw = Number(e.change);
             const val = Number.isFinite(raw) ? Math.max(0, raw) : 0;
             wwMap.set(key, (wwMap.get(key) || 0) + val);
@@ -123,12 +159,12 @@ export function buildEnergyMaps(
 /**
  * Build a temperature map from raw HA statistics.
  */
-export function buildTempMap(stats: RecorderStatisticsResult, tempId: string): Map<string, number> {
+export function buildTempMap(stats: RecorderStatisticsResult, tempId: string, timeZone: string = 'UTC'): Map<string, number> {
     const tempMap = new Map<string, number>();
     if (stats[tempId]) {
         stats[tempId].forEach((t: RecorderStatisticPoint) => {
             if (typeof t.mean === 'number') {
-                tempMap.set(new Date(t.start).toDateString(), t.mean);
+                tempMap.set(buildStatDayKey(t.start, timeZone), t.mean);
             }
         });
     }
@@ -145,25 +181,27 @@ export function buildRawPoints(
     heatingLimit: number,
     filterStart: Date | null,
     identifyYesterday: boolean,
-    excludeZeroHddDays: boolean = false
+    excludeZeroHddDays: boolean = false,
+    context: { timeZone?: string; now?: Date } = {}
 ): RawPoint[] {
-    const todayStr = new Date().toDateString();
-    const yesterday = new Date();
+    const timeZone = context.timeZone || 'UTC';
+    const now = context.now || new Date();
+    const todayStr = buildDayKey(now, timeZone);
+    const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toDateString();
-    const startTime = filterStart ? filterStart.getTime() : 0;
+    const yesterdayStr = buildDayKey(yesterday, timeZone);
+    const filterStartKey = filterStart ? buildDayKey(filterStart, timeZone) : null;
 
     const points: RawPoint[] = [];
 
     regressionSource.forEach((energy, dateStr) => {
-        if (dateStr === todayStr) return;
-        const date = new Date(dateStr);
+        if (dateStr >= todayStr) return;
         const temp = tempMap.get(dateStr);
         if (typeof temp === 'number' && typeof energy === 'number') {
             const hdd = Math.max(0, heatingLimit - temp);
             if (excludeZeroHddDays && hdd <= 0) return;
             const isYday = identifyYesterday && dateStr === yesterdayStr;
-            if (isYday || date.getTime() >= startTime) {
+            if (isYday || !filterStartKey || dateStr >= filterStartKey) {
                 points.push({ x: hdd, y: energy, dateStr, isYesterday: isYday });
             }
         }
@@ -218,7 +256,9 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
         heatingLimit,
         identifyYesterday,
         filterStart,
-        excludeZeroHddDays = false
+        excludeZeroHddDays = false,
+        timeZone = 'UTC',
+        now = new Date()
     } = params;
 
     // Guard: need temperature data
@@ -227,13 +267,14 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
     if ((!heatingId || !stats[heatingId]) && (!hotwaterId || !stats[hotwaterId])) return null;
 
     // 1. Build three-tier energy maps
-    const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, heatingId, hotwaterId);
+    const { heatingMap, totalMap, wwMap } = buildEnergyMaps(stats, heatingId, hotwaterId, timeZone);
     const hasHeating = Boolean(heatingId && stats[heatingId]);
     const hasHotwater = Boolean(hotwaterId && stats[hotwaterId]);
     const splitMode = hasHeating && hasHotwater;
 
     // Remove today's incomplete data from all maps
-    const todayStr = new Date().toDateString();
+    const todayStr = buildDayKey(now, timeZone);
+    heatingMap.delete(todayStr);
     wwMap.delete(todayStr);
     totalMap.delete(todayStr);
 
@@ -241,14 +282,15 @@ export function processInsightSeries(params: ProcessSeriesParams): SeriesResult 
     const regressionSource = hasHeating ? heatingMap : totalMap;
 
     // 3. Build temperature map and raw points
-    const tempMap = buildTempMap(stats, tempId);
+    const tempMap = buildTempMap(stats, tempId, timeZone);
     const allRawPoints = buildRawPoints(
         regressionSource,
         tempMap,
         heatingLimit,
         filterStart,
         identifyYesterday,
-        excludeZeroHddDays
+        excludeZeroHddDays,
+        { timeZone, now }
     );
 
     // 4. Outlier filter
